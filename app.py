@@ -205,11 +205,30 @@ if st.button("Show Results", type="primary"):
 
         final_result = result.head(top_n)[selected_columns]
 
+        # st.dataframe(
+        #     final_result,
+        #     use_container_width=True,
+        #     hide_index=True
+        # )
+        
+        # Below code (st.dataframe) is added to rename some columns while displaying
+        # Original column name stays same in the dataframe
+        
         st.dataframe(
             final_result,
             use_container_width=True,
-            hide_index=True
+            hide_index=True,
+            column_config={
+                "singular_name_short": st.column_config.TextColumn(
+                    "POS"
+                ),
+                "name": st.column_config.TextColumn(
+                    "team"
+                )
+            }
         )
+
+        
 
         # Download filtered results
         csv = final_result.to_csv(index=False)
