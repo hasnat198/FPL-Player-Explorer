@@ -23,13 +23,18 @@ default_columns = [
     "web_name",
     "name",
     "singular_name_short",
-    "round",
-    "points_last3",
-    "points_last2",
     "egi_last3",
+    "goals_last3",
+    "assists_last3",
     "egi_last2",
-    "minutes_last3",
-    "next1gw_opponent"
+    "goals_last2",
+    "assists_last2",
+    "next1gw_opponent",
+    "next1gw_gc",
+    "next1gw_egc",
+    "next2gw_opponent",
+    "next2gw_gc",
+    "next2gw_egc"
 ]
 
 default_columns = [
