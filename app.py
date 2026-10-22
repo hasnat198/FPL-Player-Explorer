@@ -9,6 +9,128 @@ st.set_page_config(
 )
 
 st.title("⚽ FPL Player Data Explorer by Hasnat Ahsan")
+
+# Below portin is added to accomodate "About" and "Column Definition"
+
+
+# =====================================================
+# ABOUT THE APPLICATION
+# =====================================================
+
+with st.expander("ℹ️ About This Tool", expanded=False):
+
+    st.markdown("""
+    ### What does this application do?
+
+    The FPL Player Data Explorer helps Fantasy Premier League
+    managers analyze player performance, recent form, and
+    upcoming opponents.
+
+    **Key features:**
+
+    - Analyze player performance over the last 2 and 3 gameweeks.
+    - Compare FPL points, expected goal involvements, goals,
+      assists, minutes, and defensive statistics.
+    - Examine upcoming opponents and their performance metrics.
+    - Filter players using statistical criteria.
+    - Sort players by selected performance indicators.
+    - Choose which columns to display.
+    - Download filtered results as CSV files.
+
+    ### How is it different from the official FPL website?
+
+    - **Rolling statistics:** Focuses on recent 2- and
+      3-gameweek performance.
+    - **Opponent analysis:** Adds information about upcoming
+      opponents.
+    - **Advanced filtering:** Allows customized player
+      screening using multiple conditions.
+    - **Flexible comparison:** Users can select and sort
+      different statistical indicators.
+    - **Export:** Filtered results can be downloaded for
+      further analysis.
+
+    **Disclaimer:** This is an independent analytical tool
+    and is not affiliated with the official Fantasy Premier
+    League. Historical performance does not guarantee
+    future results.
+    """)
+
+
+# =====================================================
+# COLUMN DEFINITIONS
+# =====================================================
+
+with st.expander("📖 Column Definitions", expanded=False):
+
+    column_definitions = {
+        "web_name": "Player's displayed FPL name",
+        "name": "Player's football club",
+        "singular_name_short": "Player position (GKP, DEF, MID, FWD)",
+        "round": "Gameweek associated with the record",
+        "id_player": "Unique player identifier",
+        "points_last3": "Total FPL points in the last 3 gameweeks",
+        "points_last2": "Total FPL points in the last 2 gameweeks",
+        "egi_last3": "Expected goal involvements in the last 3 gameweeks",
+        "egi_last2": "Expected goal involvements in the last 2 gameweeks",
+        "goals_last3": "Goals scored in the last 3 gameweeks",
+        "goals_last2": "Goals scored in the last 2 gameweeks",
+        "assists_last3": "Assists in the last 3 gameweeks",
+        "assists_last2": "Assists in the last 2 gameweeks",
+        "minutes_last3": "Minutes played in the last 3 gameweeks",
+        "minutes_last2": "Minutes played in the last 2 gameweeks",
+        "dc_last3": "Defensive contributions in the last 3 gameweeks",
+        "dc_last2": "Defensive contributions in the last 2 gameweeks",
+        "egc_last3": "Expected goals conceded in the last 3 gameweeks",
+        "egc_last2": "Expected goals conceded in the last 2 gameweeks",
+        "cs_last3": "Clean sheets in the last 3 gameweeks",
+        "cs_last2": "Clean sheets in the last 2 gameweeks",
+        "saves_last3": "Goalkeeper saves in the last 3 gameweeks",
+        "saves_last2": "Goalkeeper saves in the last 2 gameweeks",
+        "next1gw_opponent": "Opponent in the next gameweek",
+        "next1gw_gc": "Goals conceded by the next opponent",
+        "next1gw_egc": "Expected goals conceded by the next opponent",
+        "next1gw_gs": "Goals scored by the next opponent",
+        "next1gw_egs": "Expected goals scored by the next opponent"
+    }
+
+    definitions_df = pd.DataFrame(
+        [
+            {
+                "Column": (
+                    "POS" if col == "singular_name_short"
+                    else "team" if col == "name"
+                    else col
+                ),
+                "Description": description
+            }
+            for col, description in column_definitions.items()
+        ]
+    )
+
+    st.dataframe(
+        definitions_df,
+        hide_index=True,
+        use_container_width=True
+    )
+
+    st.markdown("""
+    **Naming conventions**
+
+    - `_last3`: Statistics calculated over the last 3 gameweeks.
+    - `_last2`: Statistics calculated over the last 2 gameweeks.
+    - `next1gw_`: Opponent information for the next gameweek.
+    - `next2gw_`: Opponent information for the second upcoming gameweek.
+    - `next3gw_`: Opponent information for the third upcoming gameweek.
+    - `next4gw_`: Opponent information for the fourth upcoming gameweek.
+
+    **Note:** Opponent statistics reflect the calculation
+    methods used to prepare the dataset.
+    """)
+
+
+# End of "About" and "Column Definition"
+
 st.caption("Explore player performance, recent form and upcoming opponents.")
 
 # Load your existing calculated data
