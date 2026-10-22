@@ -131,6 +131,76 @@ with st.expander("📖 Column Definitions", expanded=False):
 
 # End of "About" and "Column Definition"
 
+
+# =====================================================
+# COLOR CODING EXPLANATION
+# =====================================================
+
+with st.expander("🎨 Color Coding", expanded=False):
+
+    st.markdown("""
+    ### How does the color coding work?
+
+    The upcoming opponent columns (`next1gw_opponent`
+    through `next4gw_opponent`) are color-coded based
+    exclusively on **expected goals conceded (EGC)**.
+
+    - **Lower EGC:** Indicates a stronger defense,
+      making the fixture potentially more difficult
+      for attacking players.
+    - **Higher EGC:** Indicates a weaker defense,
+      making the fixture potentially more favorable
+      for attacking players.
+    - **Percentile ranking:** Each opponent is ranked
+      relative to other opponents using their EGC.
+    - **Separate gameweeks:** Percentile rankings are
+      calculated separately for each of the next
+      four gameweeks.
+
+    ### Color legend
+    """)
+
+    color_legend = [
+        ("#F4B6B6", "0–20%", "Very strong", "Very difficult"),
+        ("#F8CBAA", "20–40%", "Strong", "Difficult"),
+        ("#FFE6A1", "40–60%", "Average", "Moderate"),
+        ("#D8EDB2", "60–80%", "Weak", "Favorable"),
+        ("#B9E8C5", "80–100%", "Very weak", "Very favorable")
+    ]
+
+    st.markdown(
+        "| Color | EGC Percentile | Defensive Strength | Attacking Fixture |\n"
+        "|---|---|---|---|\n"
+        + "\n".join(
+            f"| <span style='display:inline-block;"
+            f"background-color:{color};width:45px;"
+            f"height:18px;border-radius:4px;'>&nbsp;</span> "
+            f"| {percentile} | {strength} | {difficulty} |"
+            for color, percentile, strength, difficulty
+            in color_legend
+        ),
+        unsafe_allow_html=True
+    )
+
+    st.markdown("""
+    ### Important considerations
+
+    - The colors reflect **defensive strength only**,
+      measured by expected goals conceded.
+    - They do not incorporate the opponent's attacking
+      strength, home or away advantage, injuries,
+      player form, or other match conditions.
+    - A green fixture does not guarantee high FPL points.
+    - The same opponent can have a different color
+      across gameweeks if its relative EGC ranking changes.
+
+    **Interpretation:** Red represents a stronger defense,
+    while green represents a weaker defense.
+    """)
+
+
+
+# End of color coding
 st.caption("Explore player performance, recent form and upcoming opponents.")
 
 # Load your existing calculated data
@@ -139,6 +209,101 @@ def load_data():
     return pd.read_csv("points_f.csv")
 
 df = load_data()
+
+
+# =====================================================
+# COLOR CODE NEXT 4 GAMEWEEK OPPONENTS BY xGC PERCENTILE
+# =====================================================
+
+# Calculate percentile reference values using unique opponents
+opponent_percentiles = {}
+
+for gw in range(1, 5):
+    opponent_col = f"next{gw}gw_opponent"
+    egc_col = f"next{gw}gw_egc"
+
+    if opponent_col in df.columns and egc_col in df.columns:
+
+        # Each opponent contributes only once per gameweek
+        unique_opponents = df[
+            [opponent_col, egc_col]
+        ].copy()
+
+        unique_opponents[egc_col] = pd.to_numeric(
+            unique_opponents[egc_col],
+            errors="coerce"
+        )
+
+        unique_opponents = (
+            unique_opponents
+            .dropna(subset=[opponent_col, egc_col])
+            .drop_duplicates(subset=[opponent_col])
+        )
+
+        opponent_percentiles[egc_col] = (
+            unique_opponents[egc_col]
+            .rank(pct=True, method="average") * 100
+        )
+
+        # Store xGC values for comparison
+        opponent_percentiles[egc_col] = (
+            unique_opponents[egc_col]
+            .reset_index(drop=True)
+        )
+
+
+def color_opponents(row):
+
+    styles = [""] * len(row)
+
+    for gw in range(1, 5):
+
+        opponent_col = f"next{gw}gw_opponent"
+        egc_col = f"next{gw}gw_egc"
+
+        if opponent_col not in row.index:
+            continue
+
+        if egc_col not in row.index:
+            continue
+
+        egc = pd.to_numeric(
+            row[egc_col], errors="coerce"
+        )
+
+        if pd.isna(egc):
+            continue
+
+        reference = opponent_percentiles.get(egc_col)
+
+        if reference is None or reference.empty:
+            continue
+
+        # Percentile ranking against unique opponents
+        percentile = (reference <= egc).mean() * 100
+
+        if percentile <= 20:
+            color = "#F4B6B6"  # Red
+        elif percentile <= 40:
+            color = "#F8CBAA"  # Orange
+        elif percentile <= 60:
+            color = "#FFE6A1"  # Yellow
+        elif percentile <= 80:
+            color = "#D8EDB2"  # Light green
+        else:
+            color = "#B9E8C5"  # Green
+
+        idx = row.index.get_loc(opponent_col)
+
+        styles[idx] = (
+            f"background-color: {color}; "
+            "color: #202020"
+        )
+
+    return styles
+
+
+# End of color code
 
 # Default display columns
 default_columns = [
@@ -330,30 +495,155 @@ if st.button("Show Results", type="primary"):
             f"Displaying top {min(top_n, len(result))}."
         )
 
-        final_result = result.head(top_n)[selected_columns]
+        # final_result = result.head(top_n)[selected_columns]
 
+        # # st.dataframe(
+        # #     final_result,
+        # #     use_container_width=True,
+        # #     hide_index=True
+        # # )
+        
+        # # Below code (st.dataframe) is added to rename some columns while displaying
+        # # Original column name stays same in the dataframe
+        
         # st.dataframe(
         #     final_result,
         #     use_container_width=True,
-        #     hide_index=True
+        #     hide_index=True,
+        #     column_config={
+        #         "singular_name_short": st.column_config.TextColumn(
+        #             "POS"
+        #         ),
+        #         "name": st.column_config.TextColumn(
+        #             "team"
+        #         )
+        #     }
         # )
         
-        # Below code (st.dataframe) is added to rename some columns while displaying
-        # Original column name stays same in the dataframe
+        # Updated final result
         
+        
+        # Keep all columns available for calculating colors
+        # display_source = result.head(top_n).copy()
+
+        # # Apply percentile-based colors
+        # styled_result = display_source.style.apply(
+        #     color_opponents,
+        #     axis=1
+        # )
+
+        # # Show only the columns selected by the user
+        # styled_result = styled_result.hide(
+        #     subset=[
+        #         col for col in display_source.columns
+        #         if col not in selected_columns
+        #     ],
+        #     axis="columns"
+        # )
+        
+        # Abobe portion is replaced by below portion to display selected columns
+        
+        
+        # Keep all columns available for calculating colors
+        display_source = result.head(top_n).copy()
+
+        # Calculate colors using the full dataset
+        styles = display_source.apply(
+            color_opponents,
+            axis=1,
+            result_type="expand"
+        )
+
+        styles.columns = display_source.columns
+
+        # Select only the requested columns
+        final_result = display_source[selected_columns].copy()
+
+        # Apply the previously calculated styles
+        styled_result = final_result.style.apply(
+            lambda _: styles[selected_columns],
+            axis=None
+        )
+
+
+        
+        # End of display selected columns
+
+        # Display the styled results
+        # st.dataframe(
+        #     styled_result,
+        #     use_container_width=True,
+        #     hide_index=True,
+        #     column_config={
+        #         "singular_name_short": st.column_config.TextColumn("POS"),
+        #         "name": st.column_config.TextColumn("team")
+        #     }
+        # )
+        
+        # Below part is the replacement of above to accomodate integer and float
+        
+        
+        # Numeric column formatting
+        column_config = {
+            "singular_name_short": st.column_config.TextColumn("POS"),
+            "name": st.column_config.TextColumn("team")
+        }
+
+        # Columns containing decimal-valued statistics
+        decimal_keywords = ["egi", "egc", "egs", "expected", "xg", "xa"]
+
+        # Columns containing integer-valued statistics
+        integer_keywords = [
+            "points", "goals", "assists", "minutes",
+            "saves", "cs", "dc", "gc", "gs",
+            "round", "id_player"
+        ]
+
+        for col in selected_columns:
+
+            if not pd.api.types.is_numeric_dtype(final_result[col]):
+                continue
+
+            col_lower = col.lower()
+            parts = col_lower.split("_")
+
+            if any(keyword in parts for keyword in decimal_keywords):
+                column_config[col] = st.column_config.NumberColumn(
+                    col,
+                    format="%.2f"
+                )
+
+            elif any(keyword in parts for keyword in integer_keywords):
+                column_config[col] = st.column_config.NumberColumn(
+                    col,
+                    format="%d"
+                )
+
+            else:
+                column_config[col] = st.column_config.NumberColumn(
+                    col,
+                    format="%.2f"
+                )
+
+        # Display styled results
         st.dataframe(
-            final_result,
+            styled_result,
             use_container_width=True,
             hide_index=True,
-            column_config={
-                "singular_name_short": st.column_config.TextColumn(
-                    "POS"
-                ),
-                "name": st.column_config.TextColumn(
-                    "team"
-                )
-            }
+            column_config=column_config
         )
+
+        
+        # End of integer and float
+        
+        
+
+        # Preserve the original CSV download functionality
+        final_result = display_source[selected_columns]
+
+        
+        
+        # Updated final result end
 
         
 
