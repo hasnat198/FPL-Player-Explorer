@@ -557,13 +557,51 @@ if st.button("Show Results", type="primary"):
         styles.columns = display_source.columns
 
         # Select only the requested columns
+        # final_result = display_source[selected_columns].copy()
+        
+        
+        # Select only the requested columns
         final_result = display_source[selected_columns].copy()
 
+        # Add player photo as the first column
+        if "photo_url" in display_source.columns:
+
+            # Avoid duplicate photo columns
+            final_result = final_result.drop(
+                columns=["photo_url"],
+                errors="ignore"
+            )
+
+            final_result.insert(
+                0,
+                "photo_url",
+                display_source["photo_url"]
+            )
+
+
         # Apply the previously calculated styles
+        # styled_result = final_result.style.apply(
+        #     lambda _: styles[selected_columns],
+        #     axis=None
+        # )
+        
+        
+        # Apply previously calculated opponent colors
+        # Include the new photo column in the style matrix
+
+        display_columns = final_result.columns.tolist()
+
+        photo_styles = styles.reindex(
+            index=final_result.index,
+            columns=display_columns,
+            fill_value=""
+        )
+
         styled_result = final_result.style.apply(
-            lambda _: styles[selected_columns],
+            lambda _: photo_styles,
             axis=None
         )
+
 
 
         
@@ -584,10 +622,22 @@ if st.button("Show Results", type="primary"):
         
         
         # Numeric column formatting
+        # column_config = {
+        #     "singular_name_short": st.column_config.TextColumn("POS"),
+        #     "name": st.column_config.TextColumn("team")
+        # }
+        
+        
         column_config = {
+            "photo_url": st.column_config.ImageColumn(
+                "Photo",
+                help="Player photograph",
+                width="small"
+            ),
             "singular_name_short": st.column_config.TextColumn("POS"),
             "name": st.column_config.TextColumn("team")
         }
+
 
         # Columns containing decimal-valued statistics
         decimal_keywords = ["egi", "egc", "egs", "expected", "xg", "xa"]
