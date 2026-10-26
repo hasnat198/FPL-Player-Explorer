@@ -136,47 +136,111 @@ with st.expander("📖 Column Definitions", expanded=False):
 # COLOR CODING EXPLANATION
 # =====================================================
 
+# with st.expander("🎨 Color Coding", expanded=False):
+
+#     st.markdown("""
+#     ### How does the color coding work?
+
+#     The upcoming opponent columns (`next1gw_opponent`
+#     through `next4gw_opponent`) are color-coded based
+#     exclusively on **expected goals conceded (EGC)**.
+
+#     - **Lower EGC:** Indicates a stronger defense,
+#       making the fixture potentially more difficult
+#       for attacking players.
+#     - **Higher EGC:** Indicates a weaker defense,
+#       making the fixture potentially more favorable
+#       for attacking players.
+#     - **Percentile ranking:** Each opponent is ranked
+#       relative to other opponents using their EGC.
+#     - **Separate gameweeks:** Percentile rankings are
+#       calculated separately for each of the next
+#       four gameweeks.
+
+#     ### Color legend
+#     """)
+
+#     color_legend = [
+#         ("#F4B6B6", "0–20%", "Very strong", "Very difficult"),
+#         ("#F8CBAA", "20–40%", "Strong", "Difficult"),
+#         ("#FFE6A1", "40–60%", "Average", "Moderate"),
+#         ("#D8EDB2", "60–80%", "Weak", "Favorable"),
+#         ("#B9E8C5", "80–100%", "Very weak", "Very favorable")
+#     ]
+
+#     st.markdown(
+#         "| Color | EGC Percentile | Defensive Strength | Attacking Fixture |\n"
+#         "|---|---|---|---|\n"
+#         + "\n".join(
+#             f"| <span style='display:inline-block;"
+#             f"background-color:{color};width:45px;"
+#             f"height:18px;border-radius:4px;'>&nbsp;</span> "
+#             f"| {percentile} | {strength} | {difficulty} |"
+#             for color, percentile, strength, difficulty
+#             in color_legend
+#         ),
+#         unsafe_allow_html=True
+#     )
+
+#     st.markdown("""
+#     ### Important considerations
+
+#     - The colors reflect **defensive strength only**,
+#       measured by expected goals conceded.
+#     - They do not incorporate the opponent's attacking
+#       strength, home or away advantage, injuries,
+#       player form, or other match conditions.
+#     - A green fixture does not guarantee high FPL points.
+#     - The same opponent can have a different color
+#       across gameweeks if its relative EGC ranking changes.
+
+#     **Interpretation:** Red represents a stronger defense,
+#     while green represents a weaker defense.
+#     """)
+
 with st.expander("🎨 Color Coding", expanded=False):
 
     st.markdown("""
     ### How does the color coding work?
 
-    The upcoming opponent columns (`next1gw_opponent`
-    through `next4gw_opponent`) are color-coded based
-    exclusively on **expected goals conceded (EGC)**.
+    The upcoming opponent performance columns
+    (`gc`, `egc`, `gs`, `egs`) are color-coded
+    based on their individual percentile rankings.
 
-    - **Lower EGC:** Indicates a stronger defense,
-      making the fixture potentially more difficult
-      for attacking players.
-    - **Higher EGC:** Indicates a weaker defense,
-      making the fixture potentially more favorable
-      for attacking players.
-    - **Percentile ranking:** Each opponent is ranked
-      relative to other opponents using their EGC.
-    - **Separate gameweeks:** Percentile rankings are
-      calculated separately for each of the next
-      four gameweeks.
+    The opponent name columns are not color-coded.
+
+    - **GC:** Goals conceded by the opponent.
+    - **EGC:** Expected goals conceded by the opponent.
+    - **GS:** Goals scored by the opponent.
+    - **EGS:** Expected goals scored by the opponent.
+
+    Higher GC and EGC indicate weaker defensive performance.
+
+    Higher GS and EGS indicate stronger attacking performance.
+
+    Percentile rankings are calculated separately
+    for each metric and gameweek.
 
     ### Color legend
     """)
 
     color_legend = [
-        ("#F4B6B6", "0–20%", "Very strong", "Very difficult"),
-        ("#F8CBAA", "20–40%", "Strong", "Difficult"),
-        ("#FFE6A1", "40–60%", "Average", "Moderate"),
-        ("#D8EDB2", "60–80%", "Weak", "Favorable"),
-        ("#B9E8C5", "80–100%", "Very weak", "Very favorable")
+        ("#F4B6B6", "0–20%", "Very difficult"),
+        ("#F8CBAA", "20–40%", "Difficult"),
+        ("#FFE6A1", "40–60%", "Moderate"),
+        ("#D8EDB2", "60–80%", "Favorable"),
+        ("#B9E8C5", "80–100%", "Very favorable")
     ]
 
     st.markdown(
-        "| Color | EGC Percentile | Defensive Strength | Attacking Fixture |\n"
-        "|---|---|---|---|\n"
+        "| Color | Percentile | Fixture Difficulty |\n"
+        "|---|---|---|\n"
         + "\n".join(
             f"| <span style='display:inline-block;"
             f"background-color:{color};width:45px;"
             f"height:18px;border-radius:4px;'>&nbsp;</span> "
-            f"| {percentile} | {strength} | {difficulty} |"
-            for color, percentile, strength, difficulty
+            f"| {percentile} | {difficulty} |"
+            for color, percentile, difficulty
             in color_legend
         ),
         unsafe_allow_html=True
@@ -185,19 +249,16 @@ with st.expander("🎨 Color Coding", expanded=False):
     st.markdown("""
     ### Important considerations
 
-    - The colors reflect **defensive strength only**,
-      measured by expected goals conceded.
-    - They do not incorporate the opponent's attacking
-      strength, home or away advantage, injuries,
-      player form, or other match conditions.
-    - A green fixture does not guarantee high FPL points.
-    - The same opponent can have a different color
-      across gameweeks if its relative EGC ranking changes.
-
-    **Interpretation:** Red represents a stronger defense,
-    while green represents a weaker defense.
+    - Each performance metric is ranked independently.
+    - Red indicates a more difficult opponent.
+    - Green indicates a more favorable opponent.
+    - Defensive and attacking metrics use opposite
+      percentile directions.
+    - Rankings are calculated separately for
+      each of the next four gameweeks.
+    - Colors indicate relative team performance,
+      not guaranteed FPL points.
     """)
-
 
 
 # End of color coding
@@ -215,90 +276,207 @@ df = load_data()
 # COLOR CODE NEXT 4 GAMEWEEK OPPONENTS BY xGC PERCENTILE
 # =====================================================
 
+# # Calculate percentile reference values using unique opponents
+# opponent_percentiles = {}
+
+# for gw in range(1, 5):
+#     opponent_col = f"next{gw}gw_opponent"
+#     egc_col = f"next{gw}gw_egc"
+
+#     if opponent_col in df.columns and egc_col in df.columns:
+
+#         # Each opponent contributes only once per gameweek
+#         unique_opponents = df[
+#             [opponent_col, egc_col]
+#         ].copy()
+
+#         unique_opponents[egc_col] = pd.to_numeric(
+#             unique_opponents[egc_col],
+#             errors="coerce"
+#         )
+
+#         unique_opponents = (
+#             unique_opponents
+#             .dropna(subset=[opponent_col, egc_col])
+#             .drop_duplicates(subset=[opponent_col])
+#         )
+
+#         opponent_percentiles[egc_col] = (
+#             unique_opponents[egc_col]
+#             .rank(pct=True, method="average") * 100
+#         )
+
+#         # Store xGC values for comparison
+#         opponent_percentiles[egc_col] = (
+#             unique_opponents[egc_col]
+#             .reset_index(drop=True)
+#         )
+
+# =====================================================
+# COLOR CODE NEXT 4 GAMEWEEK PERFORMANCE STATISTICS
+# =====================================================
+
 # Calculate percentile reference values using unique opponents
 opponent_percentiles = {}
 
 for gw in range(1, 5):
+
     opponent_col = f"next{gw}gw_opponent"
-    egc_col = f"next{gw}gw_egc"
 
-    if opponent_col in df.columns and egc_col in df.columns:
+    for metric in ["gc", "egc", "gs", "egs"]:
 
-        # Each opponent contributes only once per gameweek
-        unique_opponents = df[
-            [opponent_col, egc_col]
-        ].copy()
+        metric_col = f"next{gw}gw_{metric}"
 
-        unique_opponents[egc_col] = pd.to_numeric(
-            unique_opponents[egc_col],
-            errors="coerce"
-        )
+        if opponent_col in df.columns and metric_col in df.columns:
 
-        unique_opponents = (
-            unique_opponents
-            .dropna(subset=[opponent_col, egc_col])
-            .drop_duplicates(subset=[opponent_col])
-        )
+            # Each opponent contributes only once per gameweek
+            unique_opponents = df[
+                [opponent_col, metric_col]
+            ].copy()
 
-        opponent_percentiles[egc_col] = (
-            unique_opponents[egc_col]
-            .rank(pct=True, method="average") * 100
-        )
+            unique_opponents[metric_col] = pd.to_numeric(
+                unique_opponents[metric_col],
+                errors="coerce"
+            )
 
-        # Store xGC values for comparison
-        opponent_percentiles[egc_col] = (
-            unique_opponents[egc_col]
-            .reset_index(drop=True)
-        )
+            unique_opponents = (
+                unique_opponents
+                .dropna(subset=[opponent_col, metric_col])
+                .drop_duplicates(subset=[opponent_col])
+            )
 
+            # Store metric values for percentile comparison
+            opponent_percentiles[metric_col] = (
+                unique_opponents[metric_col]
+                .reset_index(drop=True)
+            )
+
+
+# def color_opponents(row):
+
+#     styles = [""] * len(row)
+
+#     for gw in range(1, 5):
+
+#         opponent_col = f"next{gw}gw_opponent"
+#         egc_col = f"next{gw}gw_egc"
+
+#         if opponent_col not in row.index:
+#             continue
+
+#         if egc_col not in row.index:
+#             continue
+
+#         egc = pd.to_numeric(
+#             row[egc_col], errors="coerce"
+#         )
+
+#         if pd.isna(egc):
+#             continue
+
+#         reference = opponent_percentiles.get(egc_col)
+
+#         if reference is None or reference.empty:
+#             continue
+
+#         # Percentile ranking against unique opponents
+#         percentile = (reference <= egc).mean() * 100
+
+#         if percentile <= 20:
+#             color = "#F4B6B6"  # Red
+#         elif percentile <= 40:
+#             color = "#F8CBAA"  # Orange
+#         elif percentile <= 60:
+#             color = "#FFE6A1"  # Yellow
+#         elif percentile <= 80:
+#             color = "#D8EDB2"  # Light green
+#         else:
+#             color = "#B9E8C5"  # Green
+
+#         idx = row.index.get_loc(opponent_col)
+
+#         styles[idx] = (
+#             f"background-color: {color}; "
+#             "color: #202020"
+#         )
+
+#     return styles
 
 def color_opponents(row):
 
     styles = [""] * len(row)
+    
+    # web_name change color based on player availability;
+    
+    # Color player name based on availability
+    if "availability" in row.index and "web_name" in row.index:
+
+        availability = str(row["availability"]).strip().lower()
+
+        if availability in ["suspended", "injured"]:
+            name_color = "#FF0000"  # Red
+
+        elif availability == "doubtful":
+            name_color = "#FFD700"  # Yellow
+
+        else:
+            name_color = None
+
+        if name_color is not None:
+            idx = row.index.get_loc("web_name")
+
+            styles[idx] = (
+                f"background-color: {name_color}; "
+                "color: #202020"
+            )
 
     for gw in range(1, 5):
 
-        opponent_col = f"next{gw}gw_opponent"
-        egc_col = f"next{gw}gw_egc"
+        for metric in ["gc", "egc", "gs", "egs"]:
 
-        if opponent_col not in row.index:
-            continue
+            metric_col = f"next{gw}gw_{metric}"
 
-        if egc_col not in row.index:
-            continue
+            if metric_col not in row.index:
+                continue
 
-        egc = pd.to_numeric(
-            row[egc_col], errors="coerce"
-        )
+            value = pd.to_numeric(
+                row[metric_col], errors="coerce"
+            )
 
-        if pd.isna(egc):
-            continue
+            if pd.isna(value):
+                continue
 
-        reference = opponent_percentiles.get(egc_col)
+            reference = opponent_percentiles.get(metric_col)
 
-        if reference is None or reference.empty:
-            continue
+            if reference is None or reference.empty:
+                continue
 
-        # Percentile ranking against unique opponents
-        percentile = (reference <= egc).mean() * 100
+            # Percentile ranking against unique opponents
+            percentile = (reference <= value).mean() * 100
 
-        if percentile <= 20:
-            color = "#F4B6B6"  # Red
-        elif percentile <= 40:
-            color = "#F8CBAA"  # Orange
-        elif percentile <= 60:
-            color = "#FFE6A1"  # Yellow
-        elif percentile <= 80:
-            color = "#D8EDB2"  # Light green
-        else:
-            color = "#B9E8C5"  # Green
+            # For defensive metrics, higher values are favorable
+            # For attacking metrics, lower values are favorable
 
-        idx = row.index.get_loc(opponent_col)
+            if metric in ["gs", "egs"]:
+                percentile = 100 - percentile
 
-        styles[idx] = (
-            f"background-color: {color}; "
-            "color: #202020"
-        )
+            if percentile <= 20:
+                color = "#F4B6B6"  # Red
+            elif percentile <= 40:
+                color = "#F8CBAA"  # Orange
+            elif percentile <= 60:
+                color = "#FFE6A1"  # Yellow
+            elif percentile <= 80:
+                color = "#D8EDB2"  # Light green
+            else:
+                color = "#B9E8C5"  # Green
+
+            idx = row.index.get_loc(metric_col)
+
+            styles[idx] = (
+                f"background-color: {color}; "
+                "color: #202020"
+            )
 
     return styles
 
@@ -310,6 +488,7 @@ default_columns = [
     "web_name",
     "name",
     "singular_name_short",
+    "current_price",
     "egi_last3",
     "goals_last3",
     "assists_last3",
@@ -319,9 +498,13 @@ default_columns = [
     "next1gw_opponent",
     "next1gw_gc",
     "next1gw_egc",
+    "next1gw_gs",
+    "next1gw_egs",
     "next2gw_opponent",
     "next2gw_gc",
-    "next2gw_egc"
+    "next2gw_egc",
+    "next2gw_gs",
+    "next2gw_egs"
 ]
 
 default_columns = [
@@ -332,61 +515,150 @@ default_columns = [
 # FIRST FILTER
 # -----------------------------
 
-st.subheader("1. Filter Players")
+# st.subheader("1. Filter Players")
 
-col1, col2 = st.columns(2)
+# col1, col2 = st.columns(2)
 
-with col1:
+# with col1:
+#     filter_column = st.selectbox(
+#         "Filter Column",
+#         ["No Filter"] + list(df.columns)
+#     )
+
+# with col2:
+#     filter_value = st.text_input(
+#         "Filter Value",
+#         placeholder="Enter a value"
+#     )
+
+# # -----------------------------
+# # SECOND FILTER
+# # -----------------------------
+
+# st.subheader("2. Numeric Filter")
+
+# numeric_columns = df.select_dtypes(
+#     include="number"
+# ).columns.tolist()
+
+# col3, col4, col5 = st.columns(3)
+
+# with col3:
+#     second_filter_column = st.selectbox(
+#         "2nd Filter Column",
+#         ["No Filter"] + numeric_columns
+#     )
+
+# with col4:
+#     operator = st.selectbox(
+#         "Comparison",
+#         [">", "<", ">=", "<=", "=="]
+#     )
+
+# with col5:
+#     second_filter_value = st.number_input(
+#         "2nd Filter Value",
+#         value=0.0
+#     )
+
+# # -----------------------------
+# # SORTING
+# # -----------------------------
+
+# st.subheader("3. Sort Results")
+
+# col6, col7, col8 = st.columns(3)
+
+# with col6:
+#     sort_column = st.selectbox(
+#         "Sort Column",
+#         list(df.columns),
+#         index=(
+#             list(df.columns).index("points_last3")
+#             if "points_last3" in df.columns else 0
+#         )
+#     )
+
+# with col7:
+#     sort_order = st.selectbox(
+#         "Sort Order",
+#         ["Descending", "Ascending"]
+#     )
+
+# with col8:
+#     top_n = st.number_input(
+#         "Top N Rows",
+#         min_value=1,
+#         max_value=max(1, len(df)),
+#         value=min(10, max(1, len(df))),
+#         step=1
+#     )
+
+# =====================================================
+# FILTERING AND SORTING - SINGLE ROW LAYOUT
+# =====================================================
+
+filter1, filter2, filter3 = st.columns([1, 1.5, 1.5])
+
+# -----------------------------
+# FIRST FILTER
+# -----------------------------
+
+with filter1:
+
+    st.subheader("1. Filter Players")
+
     filter_column = st.selectbox(
         "Filter Column",
         ["No Filter"] + list(df.columns)
     )
 
-with col2:
     filter_value = st.text_input(
         "Filter Value",
         placeholder="Enter a value"
     )
 
+
 # -----------------------------
 # SECOND FILTER
 # -----------------------------
 
-st.subheader("2. Numeric Filter")
+with filter2:
 
-numeric_columns = df.select_dtypes(
-    include="number"
-).columns.tolist()
+    st.subheader("2. Numeric Filter")
 
-col3, col4, col5 = st.columns(3)
+    numeric_columns = df.select_dtypes(
+        include="number"
+    ).columns.tolist()
 
-with col3:
     second_filter_column = st.selectbox(
         "2nd Filter Column",
         ["No Filter"] + numeric_columns
     )
 
-with col4:
-    operator = st.selectbox(
-        "Comparison",
-        [">", "<", ">=", "<=", "=="]
-    )
+    col4, col5 = st.columns(2)
 
-with col5:
-    second_filter_value = st.number_input(
-        "2nd Filter Value",
-        value=0.0
-    )
+    with col4:
+        operator = st.selectbox(
+            "Comparison",
+            [">", "<", ">=", "<=", "=="]
+        )
+
+    with col5:
+        second_filter_value = st.number_input(
+            "2nd Filter Value",
+            value=0.0
+        )
+
 
 # -----------------------------
 # SORTING
 # -----------------------------
 
-st.subheader("3. Sort Results")
+with filter3:
 
-col6, col7, col8 = st.columns(3)
+    st.subheader("3. Sort Results")
 
-with col6:
     sort_column = st.selectbox(
         "Sort Column",
         list(df.columns),
@@ -396,20 +668,22 @@ with col6:
         )
     )
 
-with col7:
-    sort_order = st.selectbox(
-        "Sort Order",
-        ["Descending", "Ascending"]
-    )
+    col7, col8 = st.columns(2)
 
-with col8:
-    top_n = st.number_input(
-        "Top N Rows",
-        min_value=1,
-        max_value=max(1, len(df)),
-        value=min(10, max(1, len(df))),
-        step=1
-    )
+    with col7:
+        sort_order = st.selectbox(
+            "Sort Order",
+            ["Descending", "Ascending"]
+        )
+
+    with col8:
+        top_n = st.number_input(
+            "Top N Rows",
+            min_value=1,
+            max_value=max(1, len(df)),
+            value=min(10, max(1, len(df))),
+            step=1
+        )
 
 # -----------------------------
 # SELECT DISPLAY COLUMNS
@@ -635,7 +909,11 @@ if st.button("Show Results", type="primary"):
                 width="small"
             ),
             "singular_name_short": st.column_config.TextColumn("POS"),
-            "name": st.column_config.TextColumn("team")
+            "name": st.column_config.TextColumn("team"),
+            "current_price": st.column_config.NumberColumn(
+                "price",
+                format="%.1f"
+            )
         }
 
 
@@ -650,6 +928,10 @@ if st.button("Show Results", type="primary"):
         ]
 
         for col in selected_columns:
+            
+            # Preserve custom column configurations
+            if col in ["current_price"]:
+                continue
 
             if not pd.api.types.is_numeric_dtype(final_result[col]):
                 continue
