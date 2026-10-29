@@ -488,6 +488,7 @@ default_columns = [
     "web_name",
     "name",
     "singular_name_short",
+    "predicted_point",
     "current_price",
     "egi_last3",
     "goals_last3",
