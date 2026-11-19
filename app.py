@@ -2,6 +2,11 @@
 import pandas as pd
 import streamlit as st
 
+# updated below 2 lines on 19th November, 2026 to include top 15 player graphics
+
+import streamlit.components.v1 as components
+from html import escape
+
 st.set_page_config(
     page_title="Hasnat's FPL Player Data Explorer",
     page_icon="⚽",
@@ -262,7 +267,7 @@ with st.expander("🎨 Color Coding", expanded=False):
 
 
 # End of color coding
-st.caption("Explore player performance, recent form and upcoming opponents.")
+st.caption("Explore player performance, recent form and upcoming opponents. To start, hit the Show Results button.")
 
 # Load your existing calculated data
 @st.cache_data
@@ -271,6 +276,97 @@ def load_data():
 
 df = load_data()
 
+# updated below lines on 19th November, 2026 to include top 15 player graphics
+
+# =====================================================
+# TOP PLAYERS NEXT GAMEWEEK - PITCH VIEW
+# =====================================================
+
+@st.cache_data(ttl=300)
+def load_top_players():
+    return pd.read_csv("top_players_next_gw.csv")
+
+# New football pitch function and display section
+# Insert the remaining code from squad_block.txt here.
+
+# =====================================================
+# TOP PLAYERS NEXT GAMEWEEK - PITCH VIEW
+# =====================================================
+
+@st.cache_data(ttl=300)
+def load_top_players():
+    return pd.read_csv("top_players_next_gw.csv")
+
+
+def show_top_players_pitch(players):
+    required = {"web_name", "photo_url", "singular_name_short"}
+    missing = required - set(players.columns)
+    if missing:
+        st.warning("Squad CSV missing columns: " + ", ".join(sorted(missing)))
+        return
+
+    def clean(value):
+        return "" if pd.isna(value) else str(value).strip()
+
+    def safe(value):
+        return escape(clean(value), quote=True)
+
+    positions = players["singular_name_short"].astype(str).str.strip().str.upper()
+    rows = []
+    for pos in ["GKP", "DEF", "MID", "FWD"]:
+        cards = []
+        for _, player in players.loc[positions == pos].iterrows():
+            name = safe(player["web_name"])
+            url = clean(player["photo_url"])
+            photo = (f'<img src="{escape(url, quote=True)}" alt="{name}">'
+                     if url.startswith(("https://", "http://")) else '<div class="no-photo">No photo</div>')
+            price = pd.to_numeric(player.get("current_price"), errors="coerce")
+            price_text = f"£{price:.1f}m" if pd.notna(price) else ""
+            prediction = pd.to_numeric(player.get("predicted_point"), errors="coerce")
+            points = f"{prediction:.2f} pts" if pd.notna(prediction) else ""
+            opponent = safe(player.get("next1gw_opponent"))
+            availability = clean(player.get("availability")).lower()
+            status = "unavailable" if availability in ["injured", "suspended"] else "doubtful" if availability == "doubtful" else ""
+            cards.append(f'''<div class="player">
+                <div class="price">{price_text}</div>{photo}
+                <div class="name {status}">{name}</div>
+                <div class="fixture">{opponent}</div>
+                <div class="points">{points}</div></div>''')
+        rows.append(f'<div class="position-row">{"".join(cards)}</div>')
+
+    html = '''<!doctype html><html><head><meta name="viewport" content="width=device-width, initial-scale=1"><style>
+    *{box-sizing:border-box} body{margin:0;font-family:Arial,sans-serif;background:#24062e}
+    .pitch{position:relative;overflow:hidden;max-width:960px;margin:auto;padding:12px 8px 18px;border-radius:12px;background:repeating-linear-gradient(0deg,#009b4e 0px,#009b4e 70px,#00a655 70px,#00a655 140px)}
+    .banner{position:relative;text-align:center;background:linear-gradient(90deg,#00e4ec,#6879fa);color:#280833;font-weight:800;padding:10px;border-radius:8px;margin:0 8% 8px}
+    .lines{position:absolute;inset:52px 0 0;width:100%;height:calc(100% - 52px);pointer-events:none}
+    .position-row{position:relative;display:flex;justify-content:center;align-items:flex-start;flex-wrap:wrap;gap:clamp(5px,2vw,22px);min-height:155px;padding:7px 0}
+    .player{width:clamp(55px,16vw,112px);text-align:center;border:1px solid #ffffff35;border-radius:5px;overflow:hidden;background:#07563788;color:white;font-size:12px;box-shadow:0 2px 5px #0002}
+    .price{height:20px;font-weight:bold;padding:3px}.player img,.no-photo{width:100%;height:85px;object-fit:contain;display:block}.no-photo{padding-top:30px;font-size:10px}
+    .name,.fixture,.points{background:#fff;color:#300b3b;padding:3px 2px;overflow-wrap:anywhere}.name{font-weight:bold}.fixture{background:#f0edf3;font-size:11px}.points{font-weight:bold;font-size:11px}.points:empty{display:none}.name.unavailable{background:#ff7777}.name.doubtful{background:#ffd700}
+    </style></head><body><div class="pitch"><div class="banner">⚽ Top Players · Next Gameweek</div>
+    <svg class="lines" viewBox="0 0 800 640" preserveAspectRatio="none" aria-hidden="true"><g stroke="white" stroke-width="2.5" fill="none" opacity=".85"><path d="M135 8 H665 L795 635 H5 Z"/><path d="M285 8 L265 105 H535 L515 8 M345 8 V44 H455 V8"/><path d="M68 340 H732"/><ellipse cx="400" cy="340" rx="90" ry="60"/><path d="M240 635 L255 535 H545 L560 635 M345 635 V600 H455 V635"/></g></svg>'''
+    html += "".join(rows) + "</div></body></html>"
+    # Allow enough vertical room if a position contains extra players.
+    import math
+    height = 95 + sum(180 * max(1, math.ceil(int((positions == pos).sum()) / 5)) for pos in ["GKP", "DEF", "MID", "FWD"])
+    components.html(html, height=height, scrolling=True)
+    if (~positions.isin(["GKP", "DEF", "MID", "FWD"])).any():
+        st.caption("Rows with unrecognized positions were omitted from the pitch.")
+
+
+with st.expander("⚽ Top Players for Next Gameweek", expanded=True):
+    try:
+        top_players = load_top_players()
+    except (FileNotFoundError, pd.errors.EmptyDataError, pd.errors.ParserError) as exc:
+        st.warning(f"Unable to load top_players_next_gw.csv: {exc}")
+    else:
+        show_top_players_pitch(top_players)
+
+
+
+# =====================================================
+# COLOR CODE NEXT 4 GAMEWEEK OPPONENTS BY xGC PERCENTILE
+# =====================================================
 
 # =====================================================
 # COLOR CODE NEXT 4 GAMEWEEK OPPONENTS BY xGC PERCENTILE
@@ -599,25 +695,32 @@ default_columns = [
 # FILTERING AND SORTING - SINGLE ROW LAYOUT
 # =====================================================
 
-filter1, filter2, filter3 = st.columns([1, 1.5, 1.5])
+# filter1, filter2, filter3 = st.columns([1, 1.5, 1.5])
+
+# filter1 column hidden
+filter3, filter2 = st.columns([1, 1])
 
 # -----------------------------
 # FIRST FILTER
 # -----------------------------
 
-with filter1:
+# with filter1:
 
-    st.subheader("1. Filter Players")
+    # st.subheader("1. Filter Players")
 
-    filter_column = st.selectbox(
-        "Filter Column",
-        ["No Filter"] + list(df.columns)
-    )
+    # filter_column = st.selectbox(
+    #     "Filter Column",
+    #     ["No Filter"] + list(df.columns)
+    # )
 
-    filter_value = st.text_input(
-        "Filter Value",
-        placeholder="Enter a value"
-    )
+    # filter_value = st.text_input(
+    #     "Filter Value",
+    #     placeholder="Enter a value"
+    # )
+    
+# First filter disabled
+filter_column = "No Filter"
+filter_value = ""
 
 
 # -----------------------------
@@ -626,14 +729,14 @@ with filter1:
 
 with filter2:
 
-    st.subheader("2. Numeric Filter")
+    st.subheader("2. Condition")
 
     numeric_columns = df.select_dtypes(
         include="number"
     ).columns.tolist()
 
     second_filter_column = st.selectbox(
-        "2nd Filter Column",
+        "Column",
         ["No Filter"] + numeric_columns
     )
 
@@ -658,13 +761,13 @@ with filter2:
 
 with filter3:
 
-    st.subheader("3. Sort Results")
+    st.subheader("1. Sort")
 
     sort_column = st.selectbox(
-        "Sort Column",
+        "Column",
         list(df.columns),
         index=(
-            list(df.columns).index("points_last3")
+            list(df.columns).index("predicted_point")
             if "points_last3" in df.columns else 0
         )
     )
